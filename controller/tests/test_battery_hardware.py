@@ -14,7 +14,7 @@ class TestBatteryHardware(unittest.TestCase):
     def test_is_plugged(self, mock_sensors):
         mock_sensors.return_value.is_plugged = True
         hw = BatteryHardware()
-        self.assertEqual(hw.is_plugged())
+        self.assertEqual(hw.is_plugged(), True)
 
     @patch("controller.core.battery_hardware.wmi.WMI")
     def test_get_model(self, mock_wmi):
@@ -23,7 +23,7 @@ class TestBatteryHardware(unittest.TestCase):
         mock_wmi.return_value.CIM_Battery.return_value = [mock_battery]
 
         hw = BatteryHardware()
-        self.assertEqual(hw.getModel(), "TestBatteryName")
+        self.assertEqual(hw.get_model(), "TestBatteryModel")
 
     @patch("controller.core.battery_hardware.wmi.WMI")
     def test_get_design_voltage(self, mock_wmi):
