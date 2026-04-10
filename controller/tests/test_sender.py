@@ -1,25 +1,87 @@
 import unittest
-from unittest.mock import patch
-from controller.core.sender import send_event
+from unittest.mock import patch, MagicMock
+from controller.core.battery_log_repository import BatteryLogRepository
+from controller.core.sender import Sender
+
+TEST_DB = "test_sender.sqlite"
 
 class TestSender(unittest.TestCase):
 
-    @patch("controller.core.sender.requests.post")
-    def test_send_event_success(self, mock_post):
-        mock_post.return_value.status_code = 200
+    def setUp(self):
+        import os
+        if os.path.exists(TEST_DB):
+            os.remove(TEST_DB)
 
-        event = {"type": "PLUGGED", "chargelevel": 87}
-        result = send_event(event)
+        self.repo = BatteryLogRepository(TEST_DB)
+        self.repo.create_table()
 
-        self.assertTrue(result)
-        mock_post.assert_called_once()
+        self.sender = Sender(
+            repo=self.repo,
+            endpoint="https://tempsite.com/post"
+        )
 
-    @patch("controller.core.sender.requests.post")
-    def test_send_event_failure(self, mock_post):
-        mock_post.return_value.status_code = 500
+    def tearDown(self):
+        import os
+        if os.path.exists(TEST_DB):
+            os.remove(TEST_DB)
 
-        event = {"type": "UNPLUGGED", "chargelevel": 42}
-        result = send_event(event)
+    def insert_log(self, device_id="id1", ts="2024-01-01 10:00:00"):
+        log = {
+            "device_id": device_id,
+            "timestamp": ts,
+            "plugged": 1,
+            "level": 50,
+            "localisation": "office",
+            "voltage": 12000,
+            "capacity": 5.0,
+            "model": "ModelA",
+            "event_type": None,
+            "event_chargelevel": None,
+        }
+        self.repo.insert_log(log)
 
-        self.assertFalse(result)
-        mock_post.assert_called_once()
+        @patch("controller.core.sender.requests.post")
+        def test_send_success(self, mock_post):
+            self.insert_log()
+
+            mock_post.return_value.status_code = 200
+
+            sent_count = self.sender.send_unsent()
+
+            self.assertEqual(sent_count, 1)
+
+            unsent = self.repo.get_unsent_logs()
+
+            self.assertEqual(len(unsent), 0)
+
+        @patch("controller.core.sender.requests.post")
+        def test_send_failure_status(self, mock_post):
+            self.insert_log()
+
+            mock_post.return_value.status_code = 500
+
+            sent_count = self.sender.send_unsent()
+
+            self.assertEqual(sent_count, 0)
+
+            unsent = self.repo.get_unsent_logs()
+            self.assertEqual(len(unsent), 1)
+
+        @patch("controller.core.sender.requests.post")
+        def test_partial_success(self, mock_post):
+            self.insert_log(device_id="id1")
+            self.insert_log(device_id="id2")
+
+            mock_post.side_effect = [
+                MagicMock(status_code=200),
+                MagicMock(status_code=500),
+            ]
+
+            sent_count = self.sender.send_unsent()
+
+            self.assertEqual(sent_count, 1)
+
+            unsent = self.repo.get_unsent_logs()
+
+            self.assertEqual(len(unsent), 1)
+
