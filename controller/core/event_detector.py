@@ -1,116 +1,62 @@
-import psutil
+class EventDetector:
 
-def detect_event(battery, state):
-    plugged = battery["plugged"]
-    percent = battery["percent"]
+    def __init__(self):
+        self.last_plugged = None
+        self.last_percent = None
 
-    #First call: no previous state
-    if state.last_plugged is None:
-        state.last_plugged = plugged
-        state.last_percent = percent
-        return None
-    
-    events = []
+    def detect(self, battery):
+        plugged = battery["plugged"]
+        percent = battery["level"]
 
-    if not state.last_plugged and plugged:
-        events.append(("PLUGGED", percent))
+        #First call: no previous state
+        if self.last_plugged is None:
+            self.last_plugged = plugged
+            self.last_percent = percent
+            return None
+        
+        events = []
 
-    if  state.last_plugged and not plugged:
-        events.append(("UNPLUGGED", percent))
+        if not self.last_plugged and plugged:
+            events.append(("PLUGGED_IN", percent))
 
-    if percent < 20 and state.last_percent >= 20:
-        events.append(("LOW_BATTERY", percent))
+        if  self.last_plugged and not plugged:
+            events.append(("UNPLUGGED", percent))
 
-    if percent == 100 and state.last_percent < 100:
-        events.append(("FULLY_CHARGED", percent))
+        if percent < 20 and self.last_percent >= 20:
+            events.append(("LOW_BATTERY", percent))
 
-    if plugged and percent > state.last_percent:
-        events.append(("CHARGE_UP", percent))
+        if percent == 100 and self.last_percent < 100:
+            events.append(("FULLY_CHARGED", percent))
 
-    if not plugged and percent < state.last_percent:
-        events.append(("CHARGE_DOWN", percent))
+        if plugged and percent > self.last_percent:
+            events.append(("CHARGE_UP", percent))
 
+        if not plugged and percent < self.last_percent:
+            events.append(("CHARGE_DOWN", percent))
+        
+        #no change/event
+        if not events:
+            self.last_plugged = plugged
+            self.last_percent = percent
+            return None
 
+        PRIORITY = [
+            "PLUGGED_IN",
+            "UNPLUGGED",
+            "LOW_BATTERY",
+            "FULLY_CHARGED",
+            "CHARGE_UP",
+            "CHARGE_DOWN",
+        ]
+        events.sort(key=lambda e: PRIORITY.index(e[0]))
+        chosen_type, chosen_level = events[0]
 
-    
-    #detect plug event
-    """ if not state.last_plugged and plugged:
-        event = {
-            "type": "PLUGGED",
-            "chargelevel": percent
+        self.last_plugged = plugged
+        self.last_percent = percent
+
+        return {
+            "event_type": chosen_type,
+            "event_chargelevel": chosen_level
         }
-        state.last_plugged = plugged
-        state.last_percent = percent
-        return event
-    
-    #detect unplug event
-    if state.last_plugged and not plugged:
-        event = {
-            "type": "UNPLUGGED",
-            "chargelevel": percent
-        }
-        state.last_plugged = plugged
-        state.last_percent = percent
-        return event
-
-    #charge up when plugged
-    if plugged and percent > state.last_percent:
-        event = {
-            "type": "CHARGE_UP",
-            "chargelevel": percent
-        }
-        state.last_plugged = plugged
-        state.last_percent = percent
-        return event
-    
-    #charge down when unplugged
-    if not plugged and percent < state.last_percent:
-        event = {
-            "type": "CHARGE_DOWN",
-            "chargelevel": percent
-        }
-        state.last_plugged = plugged
-        state.last_percent = percent
-        return event
-    
-    #low battery (<20%)
-    if percent < 20 and state.last_percent >= 20:
-        event = {
-            "type": "LOW_BATTERY",
-            "chargelevel": percent
-        }
-        state.last_plugged = plugged
-        state.last_percent = percent
-        return event
-    
-    #fully charged (100%)
-    if percent == 100 and state.last_percent < 100:
-        event = {
-            "type": "FULLY_CHARGED",
-            "chargelevel": percent
-        }
-        state.last_plugged = plugged """
-    
-    #no change/event
-    if not events:
-        state.last_plugged = plugged
-        state.last_percent = percent
-        return None
-
-    PRIORITY = [
-        "PLUGGED",
-        "UNPLUGGED",
-        "LOW_BATTERY",
-        "FULLY_CHARGED",
-        "CHARGE_UP",
-        "CHARGE_DOWN",
-    ]
-    events.sort(key=lambda e: PRIORITY.index(e[0]))
-    chosen_type, chosen_level = events[0]
-
-    state.last_plugged = plugged
-    state.last_percent = percent
-
-    return {"type": chosen_type, "chargelevel": chosen_level}
 
 

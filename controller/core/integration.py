@@ -1,13 +1,34 @@
-from controller.core.battery_reader import read_battery
-from controller.core.event_detector import detect_event
-from controller.core.sender import send_event
+from controller.core.battery_hardware import BatteryHardware
+from controller.core.event_detector import EventDetector
+from controller.core.battery_log_repository import BatteryLogRepository
+from controller.core.sender import Sender
 
-def run_once(state):
-    battery = read_battery()
-    event = detect_event(battery, state)
+def read_hardware(hw):
 
-    if event is None:
-        return False
-    
-    return send_event(event)
+    return {
+        "device_id": hw.get_device_id(),
+        "timestamp": hw.get_timestamp(),
+        "plugged": 1 if hw.is_plugged() else 0,
+        "level": hw.get_battery_level(),
+        "localisation": hw.get_localisation(),
+        "voltage": hw.get_design_voltage(),
+        "capacity": hw.get_design_capacity(),
+        "model": hw.get_model(),
+    }
 
+def run_once(repo: BatteryLogRepository, detector: EventDetector, sender: Sender):
+    hw = BatteryHardware()
+
+    state = read_hardware(hw)
+
+    event = detector.detect(state)
+
+    log_entry = {
+        **state,
+        "event_type": event["event_type"] if event else None,
+        "event_chargelevel": event["event_chargelevel"] if event else None,
+    }
+
+    repo.insert_log(log_entry)
+
+    sender.send_unsent()
