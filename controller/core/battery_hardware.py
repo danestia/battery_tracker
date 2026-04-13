@@ -1,6 +1,7 @@
 import psutil
 import uuid
 import hashlib
+import subprocess
 
 from datetime import datetime
 
@@ -61,6 +62,41 @@ class BatteryHardware:
         now = datetime.now()
         return now.strftime("%Y-%m-%d %H:%M:%S")
 
+    import subprocess
+
     def get_localisation(self):
-        # Placeholder for future logic
-        return "office"
+        """
+        Returns the current network identifier:
+        - Wi-Fi SSID if on Wi-Fi
+        - Connection name if on Ethernet
+        - 'offline' if not connected
+        """
+        try:
+            # First try Wi-Fi SSID
+            wifi = subprocess.run(
+                ["iwgetid", "-r"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout.strip()
+
+            if wifi:
+                return wifi
+
+            # Fallback: NetworkManager active connection name (works for Ethernet)
+            nm = subprocess.run(
+                ["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout.strip()
+
+            if nm:
+                # Example output: "OfficeLAN:enp0s31f6"
+                name = nm.split(":")[0]
+                return name
+
+            return "offline"
+
+        except Exception:
+            return "offline"
