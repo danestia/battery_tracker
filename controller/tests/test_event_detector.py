@@ -1,105 +1,82 @@
 import unittest
-from controller.core.state import State
-from controller.core.event_detector import detect_event
+from controller.core.event_detector import EventDetector
+
 
 class TestEventDetector(unittest.TestCase):
 
+    def setUp(self):
+        self.detector = EventDetector()
+
     def test_first_call_produces_no_event(self):
-        state = State()
-        battery = {"percent": 50, "plugged": True}
-
-        event = detect_event(battery, state)
-
+        battery = {"plugged": 1, "level": 50}
+        event = self.detector.detect(battery)
         self.assertIsNone(event)
 
     def test_detects_plug_event(self):
-        state = State()
-        state.last_plugged = False #previously unplugged
-        state.last_percent = 40
+        self.detector.last_plugged = 0
+        self.detector.last_percent = 50
 
-        battery = {"percent": 60, "plugged": True}
+        battery = {"plugged": 1, "level": 50}
+        event = self.detector.detect(battery)
 
-        event = detect_event(battery, state)
-
-        self.assertIsNotNone(event)
-        self.assertEqual(event["type"], "PLUGGED")
-        self.assertEqual(event["chargelevel"], 60)
+        self.assertEqual(event["event_type"], "PLUGGED_IN")
+        self.assertEqual(event["event_chargelevel"], 50)
 
     def test_detects_unplug_event(self):
-        state = State()
-        state.last_plugged = True #previously plugged
-        state.last_percent = 90
+        self.detector.last_plugged = 1
+        self.detector.last_percent = 50
 
-        battery = {"percent": 85, "plugged": False}
+        battery = {"plugged": 0, "level": 50}
+        event = self.detector.detect(battery)
 
-        event = detect_event(battery, state)
-
-        self.assertIsNotNone(event)
-        self.assertEqual(event["type"], "UNPLUGGED")
-        self.assertEqual(event["chargelevel"], 85)
+        self.assertEqual(event["event_type"], "UNPLUGGED")
+        self.assertEqual(event["event_chargelevel"], 50)
 
     def test_charge_up_event(self):
-        state = State()
-        state.last_plugged = True
-        state.last_percent = 40
+        self.detector.last_plugged = 1
+        self.detector.last_percent = 40
 
-        battery = {"percent": 50, "plugged": True}
+        battery = {"plugged": 1, "level": 45}
+        event = self.detector.detect(battery)
 
-        event = detect_event(battery, state)
-
-        self.assertIsNotNone(event)
-        self.assertEqual(event["type"], "CHARGE_UP")
-        self.assertEqual(event["chargelevel"], 50)
+        self.assertEqual(event["event_type"], "CHARGE_UP")
+        self.assertEqual(event["event_chargelevel"], 45)
 
     def test_charge_down_event(self):
-        state = State()
-        state.last_plugged = False
-        state.last_percent = 80
+        self.detector.last_plugged = 0
+        self.detector.last_percent = 60
 
-        battery = {"percent": 70, "plugged": False}
+        battery = {"plugged": 0, "level": 55}
+        event = self.detector.detect(battery)
 
-        event = detect_event(battery, state)
-
-        self.assertIsNotNone(event)
-        self.assertEqual(event["type"], "CHARGE_DOWN")
-        self.assertEqual(event["chargelevel"], 70)
+        self.assertEqual(event["event_type"], "CHARGE_DOWN")
+        self.assertEqual(event["event_chargelevel"], 55)
 
     def test_low_battery_event(self):
-        state = State()
-        state.last_plugged = False
-        state.last_percent = 25
+        self.detector.last_plugged = 0
+        self.detector.last_percent = 25
 
-        battery = {"percent": 19, "plugged": False}
+        battery = {"plugged": 0, "level": 19}
+        event = self.detector.detect(battery)
 
-        event = detect_event(battery, state)
-
-        self.assertIsNotNone(event)
-        self.assertEqual(event["type"], "LOW_BATTERY")
-        self.assertEqual(event["chargelevel"], 19)
+        self.assertEqual(event["event_type"], "LOW_BATTERY")
+        self.assertEqual(event["event_chargelevel"], 19)
 
     def test_fully_charged_event(self):
-        state = State()
-        state.last_plugged = True
-        state.last_percent = 95
+        self.detector.last_plugged = 1
+        self.detector.last_percent = 99
 
-        battery ={"percent": 100, "plugged": True}
+        battery = {"plugged": 1, "level": 100}
+        event = self.detector.detect(battery)
 
-        event = detect_event(battery, state)
-
-        self.assertIsNotNone(event)
-        self.assertEqual(event["type"], "FULLY_CHARGED")
-        self.assertEqual(event["chargelevel"], 100)
+        self.assertEqual(event["event_type"], "FULLY_CHARGED")
+        self.assertEqual(event["event_chargelevel"], 100)
 
     def test_no_event(self):
-        state = State()
-        state.last_plugged = True
-        state.last_percent = 60
+        self.detector.last_plugged = 1
+        self.detector.last_percent = 50
 
-        battery = {"percent": 60, "plugged": True}
-
-        event = detect_event(battery, state)
+        battery = {"plugged": 1, "level": 50}
+        event = self.detector.detect(battery)
 
         self.assertIsNone(event)
-        self.assertEqual(state.last_plugged, True)
-        self.assertEqual(state.last_percent, 60)
-
