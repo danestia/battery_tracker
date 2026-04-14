@@ -72,7 +72,6 @@ class BatteryHardware:
         - 'offline' if not connected
         """
         try:
-            # First try Wi-Fi SSID
             wifi = subprocess.run(
                 ["iwgetid", "-r"],
                 stdout=subprocess.PIPE,
@@ -83,7 +82,6 @@ class BatteryHardware:
             if wifi:
                 return wifi
 
-            # Fallback: NetworkManager active connection name (works for Ethernet)
             nm = subprocess.run(
                 ["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
                 stdout=subprocess.PIPE,
@@ -92,7 +90,6 @@ class BatteryHardware:
             ).stdout.strip()
 
             if nm:
-                # Example output: "OfficeLAN:enp0s31f6"
                 name = nm.split(":")[0]
                 return name
 

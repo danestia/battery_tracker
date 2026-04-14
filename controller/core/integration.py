@@ -16,8 +16,23 @@ def read_hardware(hw):
         "model": hw.get_model(),
     }
 
+def is_on_office_network(hw):
+    current = hw.get_localisation()
+    print(f"[DEBUG] Current network reported by hw: {current!r}")
+
+    office_networks = [
+        "Wired connection 1"
+    ]
+    current = hw.get_localisation()
+    return current in office_networks
+
 def run_once(repo: BatteryLogRepository, detector: EventDetector, sender: Sender):
     hw = BatteryHardware()
+
+    # Network check - Comment out to disable
+    if not is_on_office_network(hw):
+        print("Not on office network - logging disabled")
+        return
 
     state = read_hardware(hw)
 
