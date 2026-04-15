@@ -103,3 +103,28 @@ class BatteryLogRepository:
         conn.close()
 
         return deleted
+    
+    def load_settings(self):
+        conn = self._connect()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM settings WHERE id = 1")
+        row = cursor.fetchone()
+        conn.close()
+
+        return dict(row)
+
+
+    def update_settings(self, interval=None, manual_override=None, allowed_networks=None):
+        conn = self._connect()
+        cursor = conn.cursor()
+
+        if interval is not None:
+            cursor.execute("UPDATE settings SET interval = ? WHERE id = 1", (interval,))
+        if manual_override is not None:
+            cursor.execute("UPDATE settings SET manual_override = ? WHERE id = 1", (manual_override,))
+        if allowed_networks is not None:
+            cursor.execute("UPDATE settings SET allowed_networks = ? WHERE id = 1", (allowed_networks,))
+
+        conn.commit()
+        conn.close()
