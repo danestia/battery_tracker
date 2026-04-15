@@ -11,6 +11,18 @@ def get_conn():
     return conn
 
 def run_sql(query, params=()):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        df = pd.read_sql_query(query, conn, params=params)
+        return df
+    except Exception as e:
+        st.error(f"SQL error: {e}")
+        return pd.DataFrame()   # <-- always return a DataFrame
+    finally:
+        conn.close()
+
+def execute_sql(query, params=()):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(query, params)
@@ -50,6 +62,8 @@ def save_settings(interval=None, allowed_networks=None, manual_override=None):
 
 def get_all_devices():
     df = run_sql("SELECT DISTINCT device_id FROM battery_logs ORDER BY device_id")
+    if df is None or df.empty:
+        return []
     return df["device_id"].dropna().tolist()
 
 def get_all_networks():
@@ -67,11 +81,17 @@ def page_event_explorer():
         ["All", "Only events (event_type NOT NULL)", "Only plugged_in/unplugged"],
     )
 
-    default_start = datetime.now() - timedelta(days=7)
+    default_start = datetime.now() - timedelta(days=0)
     default_end = datetime.now()
     start_date, end_date = st.date_input(
         "Date range", [default_start, default_end]
     )
+    hours = [f"{h:02d}:00" for h in range(9, 18)]
+    col1, col2 = st.columns(2)
+    with col1:
+        start_hour = st.selectbox("Starting from", hours, index=0)
+    with col2:
+        end_hour = st.selectbox("Ending at", hours, index=len(hours)-1)
 
     query = "SELECT * FROM battery_logs WHERE 1=1"
     params = []
@@ -83,11 +103,14 @@ def page_event_explorer():
     if event_filter == "Only events (event_type NOT NULL)":
         query += " AND event_type IS NOT NULL"
     elif event_filter == "Only plugged_in/unplugged":
-        query += " AND event_type IN ('plugged_in', 'unplugged')"
+        query += " AND event_type IN ('PLUGGED_IN', 'UNPLUGGED')"
+
+    start_ts = f"{start_date} {start_hour}:00"
+    end_ts   = f"{end_date} {end_hour}:59"
 
     query += " AND timestamp BETWEEN ? AND ?"
-    params.append(start_date)
-    params.append(end_date)
+    params.append(start_ts)
+    params.append(end_ts)
 
     if st.button("Run query"):
         df = run_sql(query, params)
@@ -108,7 +131,7 @@ def page_device_comparison():
     with col2:
         device_b = st.selectbox("Device B", devices, key="device_b")
 
-    default_start = datetime.now() - timedelta(days=7)
+    default_start = datetime.now() - timedelta(days=0)
     default_end = datetime.now()
     start_date, end_date = st.date_input(
         "Date range", [default_start, default_end], key="cmp_dates"
@@ -160,7 +183,7 @@ def page_tracker_settings():
     st.header("Tracker Settings")
 
     settings = get_settings()
-    st.write(f"Current interval: {settings['inteval']} seconds")
+    st.write(f"Current interval: {settings['interval']} seconds")
 
     interval = st.slider(
         "Tracker interval (seconds)",

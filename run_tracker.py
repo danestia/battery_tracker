@@ -16,11 +16,17 @@ def main():
     #placeholder (octopus)
     sender = Sender(repo, endpoint="http://localhost:9999/see-ya-later")
 
-    print("Battery tracker started. Logging every 20 seconds.")
+    print("Battery tracker started. Logging at intervals.")
 
     while True:
+        settings = repo.load_settings()
+        if settings["manual_override"] == 1:
+            time.sleep(1)
+            continue
+
         run_once(repo, detector, sender)
-        time.sleep(20)
+
+        time.sleep(settings["interval"])
 
 if __name__ == "__main__":
     main()
