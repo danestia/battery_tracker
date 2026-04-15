@@ -2,6 +2,9 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
+import plotly.express as px
+
+
 
 DB_PATH = "battery_logs.sqlite"
 
@@ -112,10 +115,43 @@ def page_event_explorer():
     params.append(start_ts)
     params.append(end_ts)
 
+    df = pd.DataFrame()
+
     if st.button("Run query"):
         df = run_sql(query, params)
         st.write(f"{len(df)} rows")
         st.dataframe(df)
+
+    if not df.empty:
+        st.subheader("Heatmap: Event's by Hour")
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+        df["hour"] = df["timestamp"].dt.hour
+
+        heatmap_data = df.pivot_table(
+            index="hour",
+            columns="event_type",
+            values="device_id",
+            aggfunc="count",
+            fill_value=0
+        )
+
+        heatmap_data = heatmap_data.reset_index().melt(id_vars="hour")
+
+        fig = px.density_heatmap(
+            heatmap_data,
+            x="event_type",
+            y="hour",
+            z="value",
+            color_continuous_scale="Viridis",
+            labels={"value": "Count"},
+            height=500,
+        )
+
+        fig.update_yaxes(autorange="reversed")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No data available for heatmap")
 
 def page_device_comparison():
     st.header("Device Comparison")
