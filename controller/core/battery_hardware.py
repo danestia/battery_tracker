@@ -1,6 +1,7 @@
 import psutil
 import uuid
 import hashlib
+import platform
 import subprocess
 
 from datetime import datetime
@@ -62,8 +63,6 @@ class BatteryHardware:
         now = datetime.now()
         return now.strftime("%Y-%m-%d %H:%M:%S")
 
-    import subprocess
-
     def get_localisation(self):
         """
         Returns the current network identifier:
@@ -71,29 +70,82 @@ class BatteryHardware:
         - Connection name if on Ethernet
         - 'offline' if not connected
         """
-        try:
-            wifi = subprocess.run(
-                ["iwgetid", "-r"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            ).stdout.strip()
 
-            if wifi:
-                return wifi
+        os_name = platform.system()
 
-            nm = subprocess.run(
-                ["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            ).stdout.strip()
+        #Windows
+        if os_name == "Windows":
+            try:
+                output = subprocess.check_output(
+                    ["netsh", "wlan", "show", "interfaces"],
+                    encoding="utf-8",
+                    errors="ignore"
+                )
+                for line in output.splitlines():
+                    if "SSID" in line and "BSSID" not in line:
+                        ssid = line.split(":", 1)[1].strip()
+                        if ssid:
+                            return ssid
+            except:
+                pass
 
-            if nm:
-                name = nm.split(":")[0]
-                return name
+            try:
+                output = subprocess.check_output(
+                    ["netsh", "interface", "show", "interface"],
+                    encoding="utf-8",
+                    errors="ignore"
+                )
+                for line in output.splitlines():
+                    if "Connected" in line:
+                        return line.split()[-1]
+            except:
+                pass
 
             return "offline"
 
-        except Exception:
+        #Linux
+        if os_name == "Linux":
+            try:
+                wifi = subprocess.check_output(
+                    ["iwgetid", "-r"],
+                    encoding="utf-8",
+                    errors="ignore"
+                ).strip()
+
+                if wifi:
+                    return wifi
+            except:
+                pass
+
+            try:
+                nm = subprocess.check_output(
+                    ["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
+                    encoding="utf-8",
+                    errors="ignore"
+                ).strip()
+
+                if nm:
+                    return nm.split(":")[0]
+            except:
+                pass
+
             return "offline"
+        
+        #MacOS
+        if os_name == "Darwin":
+            try:
+                output = subprocess.check_output(
+                    ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],
+                    encoding="utf-8",
+                    errors="ignore"
+                )
+                for line in output.splitlines():
+                    if "SSID" in line:
+                        return line.split(":")[1].strip()
+            except:
+                pass
+
+            return "offline"
+
+        #Unknown    
+        return "offline"

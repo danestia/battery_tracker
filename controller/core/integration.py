@@ -23,7 +23,6 @@ def is_on_office_network(hw):
     office_networks = [
         "Wired connection 1"
     ]
-    current = hw.get_localisation()
     return current in office_networks
 
 def run_once(repo: BatteryLogRepository, detector: EventDetector, sender: Sender):
