@@ -2,7 +2,7 @@
 This is a first entry for github (README to be written later)
 
 This project so far is started by running run_tracker.py
-This will start the logging of battery events (plugged_in, unplugged, etc) at intervals. This functionality is tested and workign correctly.
+This will start the logging of battery events (plugged_in, unplugged, etc) at intervals. This functionality is tested and working correctly.
 
 The following are scripts to implement on linux machines to ensure the tracker auto-starts Mon - Fri at 9:00 and auto-stops at 17:00.
 
