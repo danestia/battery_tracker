@@ -40,7 +40,7 @@ class BatteryHardware:
                         getattr(b, "Name", None),
                         getattr(b, "Manufacturer", None),
                     ]
-                    return sun(1 for f in fields if f not in (None, "", 0))
+                    return sum(1 for f in fields if f not in (None, "", 0))
                 
                 if chosen is None or score(p) > score(chosen):
                     chosen = p
