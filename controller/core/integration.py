@@ -29,9 +29,9 @@ def run_once(repo: BatteryLogRepository, detector: EventDetector, sender: Sender
     hw = BatteryHardware()
 
     # Network check - Comment out to disable
-    if not is_on_office_network(hw):
+    """ if not is_on_office_network(hw):
         print("Not on office network - logging disabled")
-        return
+        return """
 
     state = read_hardware(hw)
 
