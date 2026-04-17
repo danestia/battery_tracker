@@ -17,11 +17,36 @@ except ImportError:
 class BatteryHardware:
 
     def __init__(self):
-        
+        self.battery = None
+
         try:
-            self._wmi = wmi.WMI()
-            batteries = self._wmi.CIM_Battery()
-            self._battery = batteries[0] if batteries else None
+            w = wmi.WMI()
+
+            primary = w.Win32_Battery()
+            portable = w.Win32_PortableBattery()
+
+            chosen = None
+
+            if primary:
+                chosen = primary[0]
+
+            if portable:
+                p = portable[0]
+
+                def score(b):
+                    fields = [
+                        getattr(b, "DesignCapacity", None),
+                        getattr(b, "DesignVoltage", None),
+                        getattr(b, "Name", None),
+                        getattr(b, "Manufacturer", None),
+                    ]
+                    return sun(1 for f in fields if f not in (None, "", 0))
+                
+                if chosen is None or score(p) > score(chosen):
+                    chosen = p
+
+            self._battery = chosen
+
         except Exception:
             self._battery = None
 
@@ -52,10 +77,9 @@ class BatteryHardware:
 
     def get_design_capacity(self):
         if self._battery:
-            voltage = getattr(self._battery, "DesignVoltage", None)
-            capacity = getattr(self._battery, "DesignCapacity", None)
-            if voltage and capacity:
-                return capacity / voltage
+            cap = getattr(self._battery, "DesignCapacity", None)
+            if cap:
+                return cap
         return None
 
     #timestamp + localisation - cross platform
@@ -104,7 +128,7 @@ class BatteryHardware:
             return "offline"
 
         #Linux
-        if os_name == "Linux":
+        elif os_name == "Linux":
             try:
                 wifi = subprocess.check_output(
                     ["iwgetid", "-r"],
@@ -132,7 +156,7 @@ class BatteryHardware:
             return "offline"
         
         #MacOS
-        if os_name == "Darwin":
+        elif os_name == "Darwin":
             try:
                 output = subprocess.check_output(
                     ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],
