@@ -26,16 +26,15 @@ class TestIntegration(unittest.TestCase):
             os.remove(TEST_DB)
 
     # Fake hardware state
-    def fake_state(self, level=50, plugged=1, model="ModelA"):
+    def fake_state(self, level=50, plugged=1):
         return {
             "device_id": "abc",
             "timestamp": "2024-01-01 10:00:00",
             "plugged": plugged,
             "level": level,
             "localisation": "office",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": model,
+            "event_type": None,
+            "event_chargelevel": None,
         }
     
     @patch("controller.core.integration.BatteryHardware")
@@ -49,9 +48,6 @@ class TestIntegration(unittest.TestCase):
         hw.get_device_id.return_value = "abc"
         hw.get_timestamp.return_value = "2024-01-01 10:00:00"
         hw.get_localisation.return_value = "office"
-        hw.get_design_voltage.return_value = 12000
-        hw.get_design_capacity.return_value = 5.0
-        hw.get_model.return_value = "ModelA"
 
         sender = mock_sender.return_value
 
@@ -77,9 +73,6 @@ class TestIntegration(unittest.TestCase):
             "plugged": 0,
             "level": 49,
             "localisation": "office",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": "ModelA",
             "event_type": None,
             "event_chargelevel": None,
         })
@@ -93,9 +86,6 @@ class TestIntegration(unittest.TestCase):
         hw.get_device_id.return_value = "abc"
         hw.get_timestamp.return_value = "2024-01-01 10:00:00"
         hw.get_localisation.return_value = "office"
-        hw.get_design_voltage.return_value = 12000
-        hw.get_design_capacity.return_value = 5.0
-        hw.get_model.return_value = "ModelA"
 
         sender = mock_sender.return_value
 

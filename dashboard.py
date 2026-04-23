@@ -122,7 +122,7 @@ def page_event_explorer():
         st.write(f"{len(df)} rows")
         st.dataframe(df)
 
-    if not df.empty:
+    """if not df.empty:
         st.subheader("Heatmap: Event's by Hour")
 
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
@@ -151,7 +151,7 @@ def page_event_explorer():
         fig.update_yaxes(autorange="reversed")
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("No data available for heatmap")
+        st.info("No data available for heatmap")"""
 
 def page_device_comparison():
     st.header("Device Comparison")

@@ -7,169 +7,207 @@ import subprocess
 from datetime import datetime
 
 try:
-    import wmi
+    import ctypes
 except ImportError:
-    class _WMIUnavailable:
-        def WMI(self):
-            raise RuntimeError("WMI is only available for Windows systems")
-    wmi = _WMIUnavailable()
+    ctypes = None
 
 class BatteryHardware:
 
     def __init__(self):
-        self.battery = None
+        self.os = platform.system()
 
-        try:
-            w = wmi.WMI()
-
-            primary = w.Win32_Battery()
-            portable = w.Win32_PortableBattery()
-
-            chosen = None
-
-            if primary:
-                chosen = primary[0]
-
-            if portable:
-                p = portable[0]
-
-                def score(b):
-                    fields = [
-                        getattr(b, "DesignCapacity", None),
-                        getattr(b, "DesignVoltage", None),
-                        getattr(b, "Name", None),
-                        getattr(b, "Manufacturer", None),
-                    ]
-                    return sum(1 for f in fields if f not in (None, "", 0))
-                
-                if chosen is None or score(p) > score(chosen):
-                    chosen = p
-
-            self._battery = chosen
-
-        except Exception:
-            self._battery = None
-
-    #psutil readings + device id(cross platform)
-    def get_battery_level(self):
-        battery = psutil.sensors_battery()
-        return battery.percent if battery else None
-    
-    def is_plugged(self):
-        battery = psutil.sensors_battery()
-        return bool(battery.power_plugged) if battery else None
-    
     def get_device_id(self):
         mac_int = uuid.getnode()
         mac_str = ':'.join(f"{(mac_int >> ele) & 0xff:02x}" for ele in range(40, -1, -8))
         return hashlib.sha256(mac_str.encode()).hexdigest()
     
-    #WMI readings - Windows only
-    def get_model(self):
-        if self._battery:
-            return getattr(self._battery, "Name", None)
-        return None
-
-    def get_design_voltage(self):
-        if self._battery:
-            return getattr(self._battery, "DesignVoltage", None)
-        return None
-
-    def get_design_capacity(self):
-        if self._battery:
-            cap = getattr(self._battery, "DesignCapacity", None)
-            if cap:
-                return cap
-        return None
-
     #timestamp + localisation - cross platform
     def get_timestamp(self):
         now = datetime.now()
         return now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    def get_battery_level(self):
+        if self.os == "Windows":
+            return self._win_battery_percent()
+        elif self.os == "Linux":
+            return self._linux_battery_percent()
+        elif self.os == "Darwin":
+            return self._mac_battery_percent()
+        return None
+    
+    def is_plugged(self):
+        if self.os == "Windows":
+            return self._win_is_plugged()
+        elif self.os == "Linux":
+            return self._linux_is_plugged()
+        elif self.os == "Darwin":
+            return self._mac_is_plugged()
+        return None
 
     def get_localisation(self):
-        """
-        Returns the current network identifier:
-        - Wi-Fi SSID if on Wi-Fi
-        - Connection name if on Ethernet
-        - 'offline' if not connected
-        """
-
-        os_name = platform.system()
-
-        #Windows
-        if os_name == "Windows":
-            try:
-                output = subprocess.check_output(
-                    ["netsh", "wlan", "show", "interfaces"],
-                    encoding="utf-8",
-                    errors="ignore"
-                )
-                for line in output.splitlines():
-                    if "SSID" in line and "BSSID" not in line:
-                        ssid = line.split(":", 1)[1].strip()
-                        if ssid:
-                            return ssid
-            except:
-                pass
-
-            try:
-                output = subprocess.check_output(
-                    ["netsh", "interface", "show", "interface"],
-                    encoding="utf-8",
-                    errors="ignore"
-                )
-                for line in output.splitlines():
-                    if "Connected" in line:
-                        return line.split()[-1]
-            except:
-                pass
-
-            return "offline"
-
-        #Linux
-        elif os_name == "Linux":
-            try:
-                wifi = subprocess.check_output(
-                    ["iwgetid", "-r"],
-                    encoding="utf-8",
-                    errors="ignore"
-                ).strip()
-
-                if wifi:
-                    return wifi
-            except:
-                pass
-
-            try:
-                nm = subprocess.check_output(
-                    ["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
-                    encoding="utf-8",
-                    errors="ignore"
-                ).strip()
-
-                if nm:
-                    return nm.split(":")[0]
-            except:
-                pass
-
-            return "offline"
-        
-        #MacOS
-        elif os_name == "Darwin":
-            try:
-                output = subprocess.check_output(
-                    ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],
-                    encoding="utf-8",
-                    errors="ignore"
-                )
-                for line in output.splitlines():
-                    if "SSID" in line:
-                        return line.split(":")[1].strip()
-            except:
-                pass
-
-            return "offline"
-
-        #Unknown    
+        if self.os == "Windows":
+            return self._win_localisation()
+        elif self.os == "Linux":
+            return self._linux_localisation()
+        elif self.os == "Darwin":
+            return self._mac_localisation()
         return "offline"
+    
+    #WINDOWS
+    if ctypes:
+        class _SYSTEM_POWER_STATUS(ctypes.Structure):
+            _fields_ = [
+                ("ACLineStatus", ctypes.c_byte),
+                ("BatteryFlag", ctypes.c_byte),
+                ("BatteryLifePercent", ctypes.c_byte),
+                ("Reserved1", ctypes.c_byte),
+                ("BatteryLifeTime", ctypes.c_ulong),
+                ("BatteryFullLifeTime", ctypes.c_ulong),
+            ]
+
+    def _win_get_status(self):
+        if not ctypes or not hasattr(self, "_SYSTEM_POWER_STATUS"):
+            return None
+        status = self._SYSTEM_POWER_STATUS()
+        result = ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(status))
+        return status if result else None
+    
+    def _win_battery_percent(self):
+        status = self._win_get_status()
+        if status:
+            return status.BatteryLifePercent
+        return None
+    
+    def _win_is_plugged(self):
+        status = self._win_get_status()
+        if status:
+            return status.ACLineStatus == 1
+        return None
+    
+    def _win_localisation(self):
+        try:
+            wifi = subprocess.run(
+                ["netsh", "wlan", "show", "interfaces"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout
+
+            for line in wifi.splitlines():
+                if "SSID" in line and "BSSID" not in line:
+                    ssid = line.split(":", 1)[1].strip()
+                    if ssid:
+                        return ssid
+        except:
+            pass
+
+        try:
+            eth = subprocess.run(
+                ["netsh", "interface", "show", "interface"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout
+
+            for line in eth.splitlines():
+                if "Connected" in line:
+                    parts = line.split()
+                    return parts[-1]
+        except:
+            pass
+
+        return "offline"
+    
+    #LINUX
+    def _linux_battery_percent(self):
+        battery = psutil.sensors_battery()
+        return battery.percent if battery else None
+    
+    def _linux_is_plugged(self):
+        battery = psutil.sensors_battery()
+        return bool(battery.power_plugged) if battery else None
+    
+    def _linux_localisation(self):
+        try:
+            wifi = subprocess.run(
+                ["iwgetid", "-r"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout.strip()
+            if wifi:
+                return wifi
+        except:
+            pass
+
+        try:
+            nm = subprocess.run(
+                ["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout.strip()
+            if nm:
+                return nm.split(":")[0]
+        except:
+            pass
+
+        return "offline"
+    
+    #MAC OS
+    def _mac_battery_percent(self):
+        try:
+            out = subprocess.run(
+                ["pmset", "-g", "batt"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout
+            percent = out.split("%")[0].split()[-1]
+            return int(percent)
+        except:
+            return None
+        
+    def _mac_is_plugged(self):
+        try:
+            out = subprocess.run(
+                ["pmset", "-g", "batt"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout.lower()
+            return "charging" in out or "charged" in out
+        except:
+            return None
+        
+    def _mac_localisation(self):
+        try:
+            wifi = subprocess.run(
+                ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout
+            for line in wifi.splitlines():
+                if " SSID" in line:
+                    return line.split(":")[1].strip()
+        except:
+            pass
+
+        try:
+            out = subprocess.run(
+                ["networksetup", "-listallhardwareports"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ).stdout
+            for block in out.split("\n\n"):
+                if "Device" in block and "Ethernet" in block:
+                    for line in block.splitlines():
+                        if line.startswith("Device"):
+                            return line.split(":")[1].strip()
+        except:
+            pass
+
+        return "offline"
+    

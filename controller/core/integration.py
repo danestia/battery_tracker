@@ -11,9 +11,6 @@ def read_hardware(hw):
         "plugged": 1 if hw.is_plugged() else 0,
         "level": hw.get_battery_level(),
         "localisation": hw.get_localisation(),
-        "voltage": hw.get_design_voltage(),
-        "capacity": hw.get_design_capacity(),
-        "model": hw.get_model(),
     }
 
 def is_on_office_network(hw):
