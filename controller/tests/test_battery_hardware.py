@@ -6,15 +6,13 @@ class TestBatteryHardware(unittest.TestCase):
 
     #WINDOWS
     @patch("controller.core.battery_hardware.platform.system", return_value="Windows")
-    @patch("controller.core.battery_hardware.ctypes")
-    def test_windows_battery(self, mock_ctypes, mock_os):
-        class FakeStatus:
-            ACLineStatus = 1
-            BatteryLifePercent = 87
+    @patch("controller.core.battery_hardware.BatteryHardware._win_get_status")
+    def test_windows_battery(self, mock_win_get_status, mock_platform):        
+        fake = MagicMock()
+        fake.ACLineStatus = 1
+        fake.BatteryLifePercent = 87
 
-        mock_ctypes.windll.kernel32.GetSystemPowerStatus.return_value = True
-        mock_ctypes.byref.return_value = None
-        mock_ctypes.Structure.return_value = FakeStatus()
+        mock_win_get_status.return_value = fake
 
         hw = BatteryHardware()
         self.assertEqual(hw.get_battery_level(), 87)
