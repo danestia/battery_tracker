@@ -2,7 +2,7 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
-import plotly.express as px
+#import plotly.express as px
 
 
 
@@ -32,21 +32,11 @@ def execute_sql(query, params=()):
     conn.commit()
     conn.close()
 
-def ensure_settings_row():
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, interval INTEGER DEFAULT 20, allowed_networks TEXT DEFAULT '', manual_override INTEGER DEFAULT 0)")
-    conn.commit()
-    cur.execute("SELECT COUNT(*) FROM settings")
-    count = cur.fetchone()[0]
-    if count == 0:
-        cur.execute("INSERT INTO settings (interval, allowed_networks, manual_override) VALUES (20, '', 0)")
-        conn.commit()
-    conn.close()
-
 def get_settings():
-    ensure_settings_row()
     df = run_sql("SELECT * FROM settings LIMIT 1")
+    if df.empty:
+        st.error("Settings table missing or empty. Tracker repository must initialize it.")
+        return {"interval": 20, "allowed_networks": "", "manual_override": 0}
     return df.iloc[0].to_dict()
 
 def save_settings(interval=None, allowed_networks=None, manual_override=None):
@@ -122,36 +112,36 @@ def page_event_explorer():
         st.write(f"{len(df)} rows")
         st.dataframe(df)
 
-    """if not df.empty:
-        st.subheader("Heatmap: Event's by Hour")
+    #if not df.empty:
+        #st.subheader("Heatmap: Event's by Hour")
 
-        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-        df["hour"] = df["timestamp"].dt.hour
+        #df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+        #df["hour"] = df["timestamp"].dt.hour
 
-        heatmap_data = df.pivot_table(
-            index="hour",
-            columns="event_type",
-            values="device_id",
-            aggfunc="count",
-            fill_value=0
-        )
+        #heatmap_data = df.pivot_table(
+        #    index="hour",
+        #    columns="event_type",
+        #    values="device_id",
+        #    aggfunc="count",
+        #    fill_value=0
+        #)
 
-        heatmap_data = heatmap_data.reset_index().melt(id_vars="hour")
+        #heatmap_data = heatmap_data.reset_index().melt(id_vars="hour")
 
-        fig = px.density_heatmap(
-            heatmap_data,
-            x="event_type",
-            y="hour",
-            z="value",
-            color_continuous_scale="Viridis",
-            labels={"value": "Count"},
-            height=500,
-        )
+        #fig = px.density_heatmap(
+        #    heatmap_data,
+        #    x="event_type",
+        #    y="hour",
+        #    z="value",
+        #    color_continuous_scale="Viridis",
+        #    labels={"value": "Count"},
+        #    height=500,
+        #)
 
-        fig.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No data available for heatmap")"""
+        #fig.update_yaxes(autorange="reversed")
+        #st.plotly_chart(fig, use_container_width=True)
+    #else:
+        #st.info("No data available for heatmap")
 
 def page_device_comparison():
     st.header("Device Comparison")

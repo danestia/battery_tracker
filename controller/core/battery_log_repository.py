@@ -26,6 +26,19 @@ class BatteryLogRepository:
             )
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY,
+                interval INTEGER DEFAULT 20,
+                allowed_networks TEXT DEFAULT '',
+                manual_override INTEGER DEFAULT 0
+            )
+        """)
+
+        cursor.execute("SELECT COUNT(*) FROM settings")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO settings (id, interval, allowed_networks, manual_override) VALUES (1, 20, '', 0)")
+
         conn.commit()
         conn.close()
 
