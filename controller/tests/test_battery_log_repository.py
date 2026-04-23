@@ -27,6 +27,7 @@ class TestBatteryLogRepository(unittest.TestCase):
         
         result = cursor.fetchone()
         cursor.close()
+        conn.close()
 
         self.assertIsNotNone(result)
 
@@ -37,9 +38,6 @@ class TestBatteryLogRepository(unittest.TestCase):
             "plugged": 1,
             "level": 80,
             "localisation": "bureau",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": "TestModel",
             "event_type": "CHARGE_UP",
             "event_chargelevel": 80,
         }
@@ -61,9 +59,6 @@ class TestBatteryLogRepository(unittest.TestCase):
             "plugged": 1,
             "level": 50,
             "localisation": "bureau",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": "ModelA",
             "event_type": None,
             "event_chargelevel": None,
         }
@@ -74,9 +69,6 @@ class TestBatteryLogRepository(unittest.TestCase):
             "plugged": 0,
             "level": 40,
             "localisation": "bureau",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": "ModelB",
             "event_type": "UNPLUGGED",
             "event_chargelevel": 40,
         }
@@ -95,9 +87,6 @@ class TestBatteryLogRepository(unittest.TestCase):
             "plugged": 1,
             "level": 50,
             "localisation": "bureau",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": "ModelA",
             "event_type": None,
             "event_chargelevel": None,
         }
@@ -113,16 +102,13 @@ class TestBatteryLogRepository(unittest.TestCase):
 
         self.assertEqual(len(unsent_after), 0)
 
-    def test_delet_old(self):
+    def test_delete_old(self):
         log = {
             "device_id": "id1",
             "timestamp": "2024-01-01 10:00:00",
             "plugged": 1,
             "level": 50,
             "localisation": "bureau",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": "ModelA",
             "event_type": None,
             "event_chargelevel": None,
         }

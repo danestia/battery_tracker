@@ -1,7 +1,7 @@
 import sqlite3
 
 class BatteryLogRepository:
-    def __init__(self, db_path="battery_logs.splite"):
+    def __init__(self, db_path="battery_logs.sqlite"):
         self.db_path = db_path
 
     def _connect(self):
@@ -20,9 +20,6 @@ class BatteryLogRepository:
                 plugged INTEGER,
                 level INTEGER,
                 localisation TEXT,
-                voltage INTEGER,
-                capacity REAL,
-                model TEXT,
                 event_type TEXT,
                 event_chargelevel INTEGER,
                 sent INTEGER DEFAULT 0
@@ -39,19 +36,15 @@ class BatteryLogRepository:
         cursor.execute("""
             INSERT INTO battery_logs (
                 device_id, timestamp, plugged, level,
-                localisation, voltage, capacity, model,
-                event_type, event_chargelevel, sent
+                localisation, event_type, event_chargelevel, sent
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
         """, (
             log["device_id"],
             log["timestamp"],
             log["plugged"],
             log["level"],
             log["localisation"],
-            log["voltage"],
-            log["capacity"],
-            log["model"],
             log["event_type"],
             log["event_chargelevel"],
         ))

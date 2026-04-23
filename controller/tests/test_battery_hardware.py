@@ -4,45 +4,85 @@ from controller.core.battery_hardware import BatteryHardware
 
 class TestBatteryHardware(unittest.TestCase):
 
+    #WINDOWS
+    @patch("controller.core.battery_hardware.platform.system", return_value="Windows")
+    @patch("controller.core.battery_hardware.ctypes")
+    def test_windows_battery(self, mock_ctypes, mock_os):
+        class FakeStatus:
+            ACLineStatus = 1
+            BatteryLifePercent = 87
+
+        mock_ctypes.windll.kernel32.GetSystemPowerStatus.return_value = True
+        mock_ctypes.byref.return_value = None
+        mock_ctypes.Structure.return_value = FakeStatus()
+
+        hw = BatteryHardware()
+        self.assertEqual(hw.get_battery_level(), 87)
+        self.assertTrue(hw.is_plugged())
+
+    @patch("controller.core.battery_hardware.platform.system", return_value="Windows")
+    @patch("controller.core.battery_hardware.subprocess.run")
+    def test_windows_localisation(self, mock_run, mock_os):
+        mock_run.return_value.stdout = """
+            SSID                   : TestNetwork
+            BSSID                  : 00:11:22:33:44:55
+        """
+
+        hw = BatteryHardware()
+        self.assertEqual(hw.get_localisation(), "TestNetwork")
+
+    #LINUX
+
+    @patch("controller.core.battery_hardware.platform.system", return_value="Linux")
     @patch("controller.core.battery_hardware.psutil.sensors_battery")
-    def test_get_battery_level(self, mock_sensors):
-        mock_sensors.return_value.percent = 55
+    def test_linux_battery(self, mock_batt, mock_os):
+        mock_batt.return_value.percent = 55
+        mock_batt.return_value.power_plugged = False
+
         hw = BatteryHardware()
         self.assertEqual(hw.get_battery_level(), 55)
+        self.assertFalse(hw.is_plugged())
 
-    @patch("controller.core.battery_hardware.psutil.sensors_battery")
-    def test_is_plugged(self, mock_sensors):
-        mock_sensors.return_value.is_plugged = True
-        hw = BatteryHardware()
-        self.assertEqual(hw.is_plugged(), True)
-
-    @patch("controller.core.battery_hardware.wmi.WMI")
-    def test_get_model(self, mock_wmi):
-        mock_battery = MagicMock()
-        mock_battery.Name = "TestBatteryModel"
-        mock_wmi.return_value.CIM_Battery.return_value = [mock_battery]
+    @patch("controller.core.battery_hardware.platform.system", return_value="Linux")
+    @patch("controller.core.battery_hardware.subprocess.run")
+    def test_linux_localisation(self, mock_run, mock_os):
+        mock_run.return_value.stdout = "OfficeWifi"
 
         hw = BatteryHardware()
-        self.assertEqual(hw.get_model(), "TestBatteryModel")
+        self.assertEqual(hw.get_localisation(), "OfficeWifi")
 
-    @patch("controller.core.battery_hardware.wmi.WMI")
-    def test_get_design_voltage(self, mock_wmi):
-        mock_battery = MagicMock()
-        mock_battery.DesignVoltage = 12000
-        mock_battery.DesignCapacity = 60000
-        mock_wmi.return_value.CIM_Battery.return_value = [mock_battery]
+    #MAC OS
+
+    @patch("controller.core.battery_hardware.platform.system", return_value="Darwin")
+    @patch("controller.core.battery_hardware.subprocess.run")
+    def test_mac_battery(self, mock_run, mock_os):
+        mock_run.return_value.stdout = " -InternalBattery-0 87%; charging"
 
         hw = BatteryHardware()
-        self.assertEqual(hw.get_design_capacity(), 60000 / 12000)
+        self.assertEqual(hw.get_battery_level(), 87)
+        self.assertTrue(hw.is_plugged())
+
+    @patch("controller.core.battery_hardware.platform.system", return_value="Darwin")
+    @patch("controller.core.battery_hardware.subprocess.run")
+    def test_mac_localisation(self, mock_run, mock_os):
+        mock_run.return_value.stdout = "     SSID: HomeNetwork"
+
+        hw = BatteryHardware()
+        self.assertEqual(hw.get_localisation(), "HomeNetwork")
+
+    #CROSS PLATFORM
 
     def test_get_timestamp(self):
         hw = BatteryHardware()
         ts = hw.get_timestamp()
-
         self.assertIsInstance(ts, str)
         self.assertRegex(ts, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
 
-    def test_get_localisation(self):
+    def test_get_device_id(self):
         hw = BatteryHardware()
+        device_id = hw.get_device_id()
+        self.assertIsInstance(device_id, str)
+        self.assertEqual(len(device_id), 64) #length of SHA-256 is 64
 
-        self.assertEqual(hw.get_localisation(), "office")
+
+

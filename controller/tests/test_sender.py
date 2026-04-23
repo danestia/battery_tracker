@@ -32,56 +32,53 @@ class TestSender(unittest.TestCase):
             "plugged": 1,
             "level": 50,
             "localisation": "office",
-            "voltage": 12000,
-            "capacity": 5.0,
-            "model": "ModelA",
             "event_type": None,
             "event_chargelevel": None,
         }
         self.repo.insert_log(log)
 
-        @patch("controller.core.sender.requests.post")
-        def test_send_success(self, mock_post):
-            self.insert_log()
+    @patch("controller.core.sender.requests.post")
+    def test_send_success(self, mock_post):
+        self.insert_log()
 
-            mock_post.return_value.status_code = 200
+        mock_post.return_value.status_code = 200
 
-            sent_count = self.sender.send_unsent()
+        sent_count = self.sender.send_unsent()
 
-            self.assertEqual(sent_count, 1)
+        self.assertEqual(sent_count, 1)
 
-            unsent = self.repo.get_unsent_logs()
+        unsent = self.repo.get_unsent_logs()
 
-            self.assertEqual(len(unsent), 0)
+        self.assertEqual(len(unsent), 0)
 
-        @patch("controller.core.sender.requests.post")
-        def test_send_failure_status(self, mock_post):
-            self.insert_log()
+    @patch("controller.core.sender.requests.post")
+    def test_send_failure_status(self, mock_post):
+        self.insert_log()
 
-            mock_post.return_value.status_code = 500
+        mock_post.return_value.status_code = 500
 
-            sent_count = self.sender.send_unsent()
+        sent_count = self.sender.send_unsent()
 
-            self.assertEqual(sent_count, 0)
+        self.assertEqual(sent_count, 0)
 
-            unsent = self.repo.get_unsent_logs()
-            self.assertEqual(len(unsent), 1)
+        unsent = self.repo.get_unsent_logs()
+        self.assertEqual(len(unsent), 1)
 
-        @patch("controller.core.sender.requests.post")
-        def test_partial_success(self, mock_post):
-            self.insert_log(device_id="id1")
-            self.insert_log(device_id="id2")
+    @patch("controller.core.sender.requests.post")
+    def test_partial_success(self, mock_post):
+        self.insert_log(device_id="id1")
+        self.insert_log(device_id="id2")
 
-            mock_post.side_effect = [
-                MagicMock(status_code=200),
-                MagicMock(status_code=500),
-            ]
+        mock_post.side_effect = [
+            MagicMock(status_code=200),
+            MagicMock(status_code=500),
+        ]
 
-            sent_count = self.sender.send_unsent()
+        sent_count = self.sender.send_unsent()
 
-            self.assertEqual(sent_count, 1)
+        self.assertEqual(sent_count, 1)
 
-            unsent = self.repo.get_unsent_logs()
+        unsent = self.repo.get_unsent_logs()
 
-            self.assertEqual(len(unsent), 1)
+        self.assertEqual(len(unsent), 1)
 
