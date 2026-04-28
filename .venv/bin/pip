@@ -1,4 +1,4 @@
-#!/home/dan/Documents/code/github_project/plantform/.venv/bin/python3
+#!/home/dan/Documents/code/github_project/battery_tracker/.venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
