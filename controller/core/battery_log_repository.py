@@ -1,13 +1,31 @@
 import sqlite3
+import time
 
 class BatteryLogRepository:
     def __init__(self, db_path="battery_logs.sqlite"):
         self.db_path = db_path
 
     def _connect(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=5)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
         return conn
+    
+    def _execute_with_retry(self, query, params=(), retries=5,delay=0.2):
+        for _ in range(retries):
+            try:
+                conn = self._connect()
+                cur = conn.cursor()
+                cur.execute(query, params)
+                conn.commit()
+                conn.close()
+                return
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e):
+                    time.sleep(delay)
+                    continue
+                raise
+        raise RuntimeError("DB locked too long")
     
     def create_table(self):
         conn = self._connect()
@@ -43,10 +61,7 @@ class BatteryLogRepository:
         conn.close()
 
     def insert_log(self, log):
-        conn = self._connect()
-        cursor = conn.cursor()
-
-        cursor.execute("""
+        self._execute_with_retry("""
             INSERT INTO battery_logs (
                 device_id, timestamp, plugged, level,
                 localisation, event_type, event_chargelevel, sent
@@ -61,9 +76,6 @@ class BatteryLogRepository:
             log["event_type"],
             log["event_chargelevel"],
         ))
-
-        conn.commit()
-        conn.close()
 
     def get_unsent_logs(self):
         conn = self._connect()
@@ -82,17 +94,12 @@ class BatteryLogRepository:
         return rows
     
     def mark_sent(self, rowid):
-        conn = self._connect()
-        cursor = conn.cursor()
-
-        cursor.execute("""
+        
+        self._execute_with_retry("""
             UPDATE battery_logs
             SET sent = 1
             WHERE rowid = ?
         """, (rowid,))
-
-        conn.commit()
-        conn.close()
 
     def delete_old(self, before):
         conn = self._connect()
@@ -122,15 +129,9 @@ class BatteryLogRepository:
 
 
     def update_settings(self, interval=None, manual_override=None, allowed_networks=None):
-        conn = self._connect()
-        cursor = conn.cursor()
-
         if interval is not None:
-            cursor.execute("UPDATE settings SET interval = ? WHERE id = 1", (interval,))
+            self._execute_with_retry("UPDATE settings SET interval = ? WHERE id = 1", (interval,))
         if manual_override is not None:
-            cursor.execute("UPDATE settings SET manual_override = ? WHERE id = 1", (manual_override,))
+            self._execute_with_retry("UPDATE settings SET manual_override = ? WHERE id = 1", (manual_override,))
         if allowed_networks is not None:
-            cursor.execute("UPDATE settings SET allowed_networks = ? WHERE id = 1", (allowed_networks,))
-
-        conn.commit()
-        conn.close()
+            self._execute_with_retry("UPDATE settings SET allowed_networks = ? WHERE id = 1", (allowed_networks,))
