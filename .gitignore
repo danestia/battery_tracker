@@ -3,8 +3,10 @@ __pycache__/
 *.pyc
 *.sqlite
 *.sqlite3
-*.sqlite
 *.sqlite-wal
 *.sqlite-shm
-
+venv/
+controller.log
+state.txt
+*.xml
 
