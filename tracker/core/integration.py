@@ -24,7 +24,7 @@ def is_on_office_network(hw):
     ]
     return current in office_networks
 
-def run_once(repo: BatteryLogRepository, detector: EventDetector):
+def run_once(repo: BatteryLogRepository, detector: EventDetector, endpoint: str = "http://100.88.115.20:8000/ingest/"):
     hw = BatteryHardware()
     state = read_hardware(hw)
     event = detector.detect(state)
@@ -38,5 +38,5 @@ def run_once(repo: BatteryLogRepository, detector: EventDetector):
 
     repo.insert_log(log_entry)
 
-    sender = Sender(repo)
+    sender = Sender(repo, endpoint=endpoint)
     sender.send_unsent()
