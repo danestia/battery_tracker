@@ -7,11 +7,11 @@ if (-not $Mode) { $Mode = $args[0] }
 # Environment Setup (100% Dynamic & Portable)
 $ScriptDir  = $PSScriptRoot
 $RootDir    = Split-Path -Parent $ScriptDir
-$PythonExe  = Join-Path $RootDir "venv\Scripts\python.exe"
+$PythonExe  = Join-Path $RootDir ".venv\Scripts\python.exe"
 $TrackerPy  = Join-Path $RootDir "run_tracker.py"
 $DeliveryPy = Join-Path $RootDir "delivery.py"
 $LogFile    = Join-Path $ScriptDir "controller.log"
-$LockFile   = "C:\battery-tracker\data\tracker.lock"
+$LockFile   = Join-Path $RootDir "data\tracker.lock"
 
 function Write-Log($msg) {
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
