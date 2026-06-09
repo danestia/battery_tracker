@@ -1,16 +1,17 @@
+import os
 import time
 import signal
 import sys
-
 from pathlib import Path
 
-from controller.core.battery_log_repository import BatteryLogRepository
-from controller.core.event_detector import EventDetector
-from controller.core.sender import Sender
-from controller.core.integration import run_once
+from tracker.core.battery_log_repository import BatteryLogRepository
+from tracker.core.event_detector import EventDetector
+from tracker.core.sender import Sender
+from tracker.core.integration import run_once
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "battery_logs.sqlite"
+DB_PATH = BASE_DIR / "data" / "battery_logs.sqlite"
+ENDPOINT_URL = "http://100.88.115.20:8000/ingest/"
 
 shutdown_requested = False
 
@@ -34,8 +35,8 @@ def main():
     print("[DEBUG] repo ready")
 
     detector = EventDetector()
-    #placeholder (octopus)
-    sender = Sender(repo, endpoint="http://localhost:9999/see-ya-later")
+    # The loop-level sender is retained here for the clean shutdown flush routine
+    sender = Sender(repo, endpoint=ENDPOINT_URL)
 
     print("Battery tracker started. Logging at intervals.")
 
@@ -51,7 +52,7 @@ def main():
 
         try: 
             print("[DEBUG] calling run_once")   
-            run_once(repo, detector, sender)
+            run_once(repo, detector, endpoint=ENDPOINT_URL)
             print("[DEBUG] run_once completed")
         except Exception as e:
             print("Error:", e)
@@ -72,10 +73,8 @@ def main():
     except Exception as e:
         print(f"[SHUTDOWN] Flush failed: {e}")
 
-
     print("[SHUTDOWN] Exiting cleanly")
     sys.exit(0)
-
 
 if __name__ == "__main__":
     main()
