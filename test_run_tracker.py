@@ -50,7 +50,9 @@ class TestRegisterSignals(unittest.TestCase):
             run_tracker.register_signals()
             calls = mock_signal.call_args_list
             registered = [c[0][0] for c in calls]
-            self.assertNotIn(signal.SIGBREAK, registered)
+            sigbreak = getattr(signal, "SIGBREAK", None)
+            if sigbreak is not None:
+                self.assertNotIn(sigbreak, registered)
 
 class TestMainLoop(unittest.TestCase):
 
