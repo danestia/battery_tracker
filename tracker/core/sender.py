@@ -14,11 +14,14 @@ class Sender:
 
             payload = dict(row)
 
+            if "uuid" in payload:
+                payload["log_uuid"] = payload.pop("uuid")
+
             try:
                 response = requests.post(self.endpoint, json=payload, timeout=self.timeout)
 
                 if response.status_code == 200:
-                    self.repo.mark_sent(row["id"])
+                    self.repo.mark_sent(row["uuid"])
                     send_count += 1
                 else:
                     continue

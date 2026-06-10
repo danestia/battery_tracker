@@ -24,13 +24,13 @@ def is_on_office_network(hw):
     ]
     return current in office_networks
 
-def run_once(repo: BatteryLogRepository, detector: EventDetector, endpoint: str = "http://100.88.115.20:8000/ingest/"):
+def run_once(repo: BatteryLogRepository, detector: EventDetector, endpoint: str = "http://100.88.115.20:8000/ingest"):
     hw = BatteryHardware()
     state = read_hardware(hw)
     event = detector.detect(state)
 
     log_entry = {
-        "id": str(uuid.uuid4()),
+        "uuid": str(uuid.uuid4()),
         **state,
         "event_type": event["event_type"] if event else None,
         "event_chargelevel": event["event_chargelevel"] if event else None,

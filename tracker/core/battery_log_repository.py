@@ -33,7 +33,7 @@ class BatteryLogRepository:
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS battery_logs (
-                id TEXT PRIMARY KEY,
+                uuid TEXT PRIMARY KEY,
                 device_id TEXT NOT NULL,
                 timestamp TEXT NOT NULL,
                 plugged INTEGER NOT NULL,
@@ -64,12 +64,12 @@ class BatteryLogRepository:
     def insert_log(self, log):
         self._execute_with_retry("""
             INSERT INTO battery_logs (
-                id, device_id, timestamp, plugged, level,
+                uuid, device_id, timestamp, plugged, level,
                 localisation, event_type, event_chargelevel
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            log["id"],
+            log["uuid"],
             log["device_id"],
             log["timestamp"],
             log["plugged"],
@@ -95,13 +95,13 @@ class BatteryLogRepository:
 
         return rows
     
-    def mark_sent(self, log_id):
+    def mark_sent(self, log_uuid):
         
         self._execute_with_retry("""
             UPDATE battery_logs
             SET sent = 1
-            WHERE id = ?
-        """, (log_id,))
+            WHERE uuid = ?
+        """, (log_uuid,))
 
     def delete_old(self, before):
         conn = self._connect()
