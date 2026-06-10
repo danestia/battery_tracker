@@ -11,7 +11,7 @@ from tracker.core.integration import run_once
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data" / "battery_logs.sqlite"
-ENDPOINT_URL = "http://100.88.115.20:8000/ingest/"
+ENDPOINT_URL = "http://100.88.115.20:8000/ingest"
 
 shutdown_requested = False
 
