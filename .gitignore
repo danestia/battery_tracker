@@ -1,12 +1,55 @@
+# =============================================================================
+# 1. Project Databases & Runtime Buffers (Core Storage)
+# =============================================================================
 battery_logs.sqlite
-__pycache__/
-*.pyc
 *.sqlite
 *.sqlite3
+*.sqlite-journal
 *.sqlite-wal
 *.sqlite-shm
-venv/
-controller.log
-state.txt
-*.xml
 
+# =============================================================================
+# 2. Local State, Locks, & Task Automation Logs
+# =============================================================================
+state.txt
+*.log
+controller.log
+automation/controller.log
+data/tracker.lock
+*.lock
+
+# =============================================================================
+# 3. Python Runtime Environment & Precompiled Caches
+# =============================================================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+env/
+
+# =============================================================================
+# 4. Integrated Development Environments & Text Editors (VS Code / JetBrains)
+# =============================================================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# =============================================================================
+# 5. OS-Specific Metadata (Windows / macOS)
+# =============================================================================
+Thumbs.db
+Ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# =============================================================================
+# 6. Miscellaneous Assets
+# =============================================================================
+*.xml
