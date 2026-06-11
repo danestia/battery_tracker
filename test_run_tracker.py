@@ -44,13 +44,20 @@ class TestRegisterSignals(unittest.TestCase):
             self.assertIn(signal.SIGBREAK, registered)
 
     def test_no_sigbreak_on_linux(self):
+        import sys
+
+        windows_sigbreak = getattr(signal, "SIGBREAK", 21)
+
         with patch("run_tracker.sys") as mock_sys, \
              patch("signal.signal") as mock_signal:
+            
             mock_sys.platform = "linux"
             run_tracker.register_signals()
+
             calls = mock_signal.call_args_list
             registered = [c[0][0] for c in calls]
-            self.assertNotIn(signal.SIGBREAK, registered)
+
+            self.assertNotIn(windows_sigbreak, registered)
 
 class TestMainLoop(unittest.TestCase):
 
