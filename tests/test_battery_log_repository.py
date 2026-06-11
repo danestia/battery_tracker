@@ -33,7 +33,7 @@ class TestBatteryLogRepository(unittest.TestCase):
 
     def test_insert_log(self):
         log = {
-            "id": "test-uuid-1",
+            "uuid": "test-uuid-1",
             "device_id": "abc123",
             "timestamp": "2024-01-01 12:00:00",
             "plugged": 1,
@@ -55,7 +55,7 @@ class TestBatteryLogRepository(unittest.TestCase):
 
     def test_get_unsent_logs(self):
         log1 = {
-            "id": "test-uuid-2",
+            "uuid": "test-uuid-2",
             "device_id": "id1",
             "timestamp": "2024-01-01 10:00:00",
             "plugged": 1,
@@ -66,7 +66,7 @@ class TestBatteryLogRepository(unittest.TestCase):
         }
 
         log2 = {
-            "id": "test-uuid-3",
+            "uuid": "test-uuid-3",
             "device_id": "id2",
             "timestamp": "2024-01-01 11:00:00",
             "plugged": 0,
@@ -85,7 +85,7 @@ class TestBatteryLogRepository(unittest.TestCase):
 
     def test_mark_sent(self):
         log = {
-            "id": "test-uuid-4",
+            "uuid": "test-uuid-4",
             "device_id": "id1",
             "timestamp": "2024-01-01 10:00:00",
             "plugged": 1,
@@ -98,7 +98,7 @@ class TestBatteryLogRepository(unittest.TestCase):
         self.repo.insert_log(log)
 
         unsent = self.repo.get_unsent_logs()
-        row_id = unsent[0]["id"]
+        row_id = unsent[0]["uuid"]
 
         self.repo.mark_sent(row_id)
 
@@ -108,7 +108,7 @@ class TestBatteryLogRepository(unittest.TestCase):
 
     def test_delete_old(self):
         log = {
-            "id": "test-uuid-5",
+            "uuid": "test-uuid-5",
             "device_id": "id1",
             "timestamp": "2024-01-01 10:00:00",
             "plugged": 1,

@@ -41,7 +41,7 @@ class TestSender(unittest.TestCase):
 
     def insert_log(self, device_id="id1", ts="2024-01-01 10:00:00"):
         log = {
-            "id": str(uuid.uuid4()),  # Generates unique IDs to prevent IntegrityErrors
+            "uuid": str(uuid.uuid4()),  # Generates unique IDs to prevent IntegrityErrors
             "device_id": device_id,
             "timestamp": ts,
             "plugged": 1,

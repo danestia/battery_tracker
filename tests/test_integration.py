@@ -28,7 +28,7 @@ class TestIntegration(unittest.TestCase):
     # Fake hardware state
     def fake_state(self, level=50, plugged=1):
         return {
-            "id": str(uuid.uuid4()),
+            "uuid": str(uuid.uuid4()),
             "device_id": "abc",
             "timestamp": "2024-01-01 10:00:00",
             "plugged": plugged,
@@ -69,7 +69,7 @@ class TestIntegration(unittest.TestCase):
 
 
         self.repo.insert_log({
-            "id": str(uuid.uuid4()),
+            "uuid": str(uuid.uuid4()),
             "device_id": "abc",
             "timestamp": "2024-01-01 09:59:00",
             "plugged": 0,
