@@ -17,6 +17,9 @@ class Sender:
             if "uuid" in payload:
                 payload["log_uuid"] = payload["uuid"]
 
+            if "plugged" in payload:
+                payload["plugged"] = bool(payload["plugged"])
+
             try:
                 response = requests.post(self.endpoint, json=payload, timeout=self.timeout)
 
