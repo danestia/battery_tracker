@@ -15,7 +15,7 @@ class Sender:
             payload = dict(row)
 
             if "uuid" in payload:
-                payload["log_uuid"] = payload.pop("uuid")
+                payload["log_uuid"] = payload["uuid"]
 
             try:
                 response = requests.post(self.endpoint, json=payload, timeout=self.timeout)
