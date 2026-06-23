@@ -137,3 +137,30 @@ class BatteryLogRepository:
             self._execute_with_retry("UPDATE settings SET manual_override = ? WHERE id = 1", (manual_override,))
         if allowed_networks is not None:
             self._execute_with_retry("UPDATE settings SET allowed_networks = ? WHERE id = 1", (allowed_networks,))
+
+    @staticmethod
+    def delete_safely_sent_logs(db_path: str, record_ids: list):
+
+        if not record_ids:
+            return
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("BEGIN TRANSACTION;")
+
+            format_strings = ','.join(['?'] * len(record_ids))
+
+            cursor.execute(
+                f"DELETE FROM battery_logs WHERE sent = 1 AND id IN ({format_strings})",
+                record_ids
+            )
+
+            conn.commit()
+
+            cursor.execute("VACUUM;")
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
