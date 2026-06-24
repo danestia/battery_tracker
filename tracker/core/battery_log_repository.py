@@ -1,9 +1,14 @@
 import sqlite3
 import time
+import os
 
 class BatteryLogRepository:
-    def __init__(self, db_path="battery_logs.sqlite"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        if db_path is None:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.db_path = os.path.join(base_dir, "data", "battery_logs.sqlite")
+        else:
+            self.db_path = os.path.abspath(db_path)
 
     def _connect(self):
         conn = sqlite3.connect(self.db_path, timeout=5)
@@ -138,27 +143,26 @@ class BatteryLogRepository:
         if allowed_networks is not None:
             self._execute_with_retry("UPDATE settings SET allowed_networks = ? WHERE id = 1", (allowed_networks,))
 
-    @staticmethod
-    def delete_safely_sent_logs(db_path: str, record_ids: list):
+    def delete_safely_sent_logs(self, record_uuids: list):
 
-        if not record_ids:
+        if not record_uuids:
             return
         
-        conn = sqlite3.connect(db_path)
+        conn = self._connect()
         cursor = conn.cursor()
         try:
-            cursor.execute("BEGIN TRANSACTION;")
+            cursor.execute('BEGIN TRANSACTION;')
 
-            format_strings = ','.join(['?'] * len(record_ids))
+            format_strings = ','.join(['?'] * len(record_uuids))
 
             cursor.execute(
-                f"DELETE FROM battery_logs WHERE sent = 1 AND id IN ({format_strings})",
-                record_ids
+                f"DELETE FROM battery_logs WHERE uuid IN ({format_strings})",
+                record_uuids
             )
 
             conn.commit()
 
-            cursor.execute("VACUUM;")
+            cursor.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         except Exception as e:
             conn.rollback()
             raise e

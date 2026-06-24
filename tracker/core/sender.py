@@ -11,7 +11,7 @@ class Sender:
 
     def _is_hub_reachable(self) -> bool:
         try:
-            response = requests.head(self.endpoint, timeout=2)
+            response = requests.options(self.endpoint, timeout=2)
             return response.status_code < 500
         except requests.RequestException:
             return False
@@ -53,7 +53,7 @@ class Sender:
                     self.repo.mark_sent(u)
                 
                 self.repo.delete_safely_sent_logs(successfully_sent_uuids)
-                print(f"Successfully flushed {len(successfully_sent_uuids)} rows from SQLite Temp storage")
+                print(f"Successfully flushed {len(successfully_sent_uuids)} rows from SQLite Temp storage.")
             except Exception as e:
                 print(f"Failed to execute storage flush: {e}")
 
