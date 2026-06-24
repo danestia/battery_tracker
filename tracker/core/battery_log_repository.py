@@ -60,6 +60,8 @@ class BatteryLogRepository:
             )
         """)
 
+        whitelist = "Wired connection 1, estia.local, ESTIA - PERSO (INT)"
+
         cursor.execute("SELECT COUNT(*) FROM settings")
         if cursor.fetchone()[0] == 0:
             cursor.execute("INSERT INTO settings (id, interval, allowed_networks, manual_override) VALUES (1, 20, '', 0)")
