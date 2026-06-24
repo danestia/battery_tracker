@@ -1,6 +1,7 @@
 import sqlite3
 import time
 import os
+import subprocess
 
 class BatteryLogRepository:
     def __init__(self, db_path=None):
@@ -168,3 +169,30 @@ class BatteryLogRepository:
             raise e
         finally:
             conn.close()
+
+    def get_active_ssid(self) -> str:
+        try:
+            ssid = subprocess.check_output(
+                ["nmcli", "-t", "-f", "ACTIVE,NAME", "connection", "show", "--active"],
+                stderr=subprocess.DEVNULL
+            ).decode("utf-8")
+
+            for line in ssid.splitlines():
+                if line.startswith("yes:"):
+                    return line.split("yes:")[1].strip()
+        except Exception:
+            pass
+        return ""
+    
+    def is_network_allowed(self) -> bool:
+        settings = self.load_settings()
+
+        allowed_str = settings.get("allowed_networks", "")
+        if not allowed_str:
+            return True
+        
+        allowed_list = [net.strip() for net in allowed_str.split(",") if net.strip()]
+        current_ssid = self.get_active_ssid()
+
+        print(f"[DEBUG] Current SSID: '{current_ssid}' | Allowed: {allowed_list}")
+        return current_ssid in allowed_list
