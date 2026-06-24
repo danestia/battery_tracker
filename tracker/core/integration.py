@@ -14,7 +14,8 @@ def read_hardware(hw):
         "localisation": hw.get_localisation(),
     }
 
-def is_on_office_network(hw):
+#original network check. To be removed if update is effective
+"""def is_on_office_network(hw):
     current = hw.get_localisation()
     print(f"[DEBUG] Current network reported by hw: {current!r}")
 
@@ -22,10 +23,17 @@ def is_on_office_network(hw):
         "Wired connection 1",
         "estia.local"
     ]
-    return current in office_networks
+    return current in office_networks"""
 
 def run_once(repo: BatteryLogRepository, detector: EventDetector, endpoint: str = "http://100.88.115.20:8000/ingest"):
+    print("[DEBUG] running run_once ticket")
+
     hw = BatteryHardware()
+
+    if not repo.is_network_allowed():
+        print("Network Filter: Not an office whitelist network. Aborting log collection")
+        return
+    
     state = read_hardware(hw)
     event = detector.detect(state)
 
