@@ -12,6 +12,7 @@ from tracker.core.integration import run_once
 
 def get_default_db_path() -> Path:
     base = Path(__file__).resolve().parent / "data"
+   
     base.mkdir(parents=True, exist_ok=True)
     return base / "battery_logs.sqlite"
 
@@ -33,7 +34,6 @@ def parse_args():
     parser.add_argument(
         "--endpoint",
         type=str,
-        #octopus
         default=os.environ.get("BATTERY_TRACKER_ENDPOINT", "http://100.88.115.20:8000/ingest"),
         help="Ingest server URL endpoint",
     )
@@ -85,11 +85,11 @@ def main():
         while not shutdown_requested and elapsed < interval:
             time.sleep(1)
             elapsed += 1
-    
-    print("[SHUTDOWN] Loop exited. Flushing unsent log(s)...")
+
+    print("[SHUTDOWN] Flushing unsent log(s)...")
     try:
         sent = sender.send_unsent()
-        print(f"[SHUTDOWN] flushed {sent} log(s)")
+        print(f"[SHUTDOWN] Successfully flushed {sent} log(s)")
     except Exception as e:
         print(f"[SHUTDOWN] Flush failed: {e}")
 
