@@ -2,6 +2,7 @@ import os
 import time
 import signal
 import sys
+import argparse
 from pathlib import Path
 
 from tracker.core.battery_log_repository import BatteryLogRepository
@@ -9,9 +10,10 @@ from tracker.core.event_detector import EventDetector
 from tracker.core.sender import Sender
 from tracker.core.integration import run_once
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "data" / "battery_logs.sqlite"
-ENDPOINT_URL = "http://100.88.115.20:8000/ingest"
+def get_default_db_path() -> Path:
+    base = Path(__file__).resolve().parent / "data"
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "battery_logs.sqlite"
 
 shutdown_requested = False
 
@@ -26,46 +28,64 @@ def register_signals():
     if sys.platform == "win32":
         signal.signal(signal.SIGBREAK, handle_shutdown)
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Battery Tracker Client Daemon")
+    parser.add_argument(
+        "--endpoint",
+        type=str,
+        #octopus
+        default=os.environ.get("BATTERY_TRACKER_ENDPOINT", "http://100.88.115.20:8000/ingest"),
+        help="Ingest server URL endpoint",
+    )
+    parser.add_argument(
+        "--db-path",
+        type=Path,
+        default=get_default_db_path(),
+        help="Path to SQLite database file",
+    )
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
     register_signals()
 
-    print("[DEBUG] main() entered")
-    repo = BatteryLogRepository(DB_PATH)
+    endpoint_url = args.endpoint
+    db_path = args.db_path
+
+    print(f"[INIT] Database path: {db_path}")
+    print(f"[INIT] Ingest Endpoint: {endpoint_url}")
+
+    repo = BatteryLogRepository(db_path)
     repo.create_table()
-    print("[DEBUG] repo ready")
 
     detector = EventDetector()
-    # The loop-level sender is retained here for the clean shutdown flush routine
-    sender = Sender(repo, endpoint=ENDPOINT_URL)
+    sender = Sender(repo, endpoint=endpoint_url)
 
-    print("Battery tracker started. Logging at intervals.")
+    print("[STATUS] Battery tracker daemon started")
 
     while not shutdown_requested:
-        print("[DEBUG] loop tick")
-        settings = repo.load_settings()
-        print("[DEBUG] settings", settings)
+        raw_settings = repo.load_settings() or {}
+        settings = {
+            "manual_override": raw_settings.get("manual_override", 0),
+            "interval": raw_settings.get("interval", 60),
+        }
 
         if settings["manual_override"] == 1:
-            print("[DEBUG] manual_override active, sleeping")
-            time.sleep(1)
+            print("[STATUS] Manual override active. Pausing logging...")
+            time.sleep(5)
             continue
 
-        try: 
-            print("[DEBUG] calling run_once")   
-            run_once(repo, detector, endpoint=ENDPOINT_URL)
-            print("[DEBUG] run_once completed")
+        try:
+            run_once(repo, detector, endpoint=endpoint_url)
         except Exception as e:
-            print("Error:", e)
-            raise
-
-        print("[DEBUG] sleeping for", settings["interval"])
+            print(f"[ERROR] Cycle execution failed: {e}")
 
         elapsed = 0
         interval = settings["interval"]
         while not shutdown_requested and elapsed < interval:
             time.sleep(1)
             elapsed += 1
-
+    
     print("[SHUTDOWN] Loop exited. Flushing unsent log(s)...")
     try:
         sent = sender.send_unsent()

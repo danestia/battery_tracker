@@ -44,23 +44,17 @@ Maintains operational parameters that govern edge node behavior.
 
 ## ⚙️ Network Configuration & Whitelisting
 
-To protect the integrity of the psychological study, telemetry must **only** be gathered when a participant is physically in the office looking at the animatronic plant prototype.
+To protect participant privacy and maintain dataset integrity, telemetry is **only** gathered when a participant is physically connected to an approved office network environment.
 
 ### Active Network Detection
-* **On Linux:** The script uses Linux NetworkManager CLI (`nmcli`) to query active system connection profiles dynamically across both Wi-Fi interfaces and physical docking stations:
-  ```bash
-  nmcli -t -f ACTIVE,NAME connection show --active
-  ```
-* **On Windows:** The hardware layer uses `netsh wlan show interfaces` to pull the active SSID.
+The tracking engine inspects active system network connection profiles (such as Wi-Fi SSIDs or Ethernet interface adapters) at runtime.
 
-The repository automatically self-heals and seeds your target environment settings table on its first initialization loop with standard operational defaults:
-* `Wired connection 1` (Office Ethernet/Docks)
-* `estia.local` (Core office backbone)
-* `ESTIA - PERSO (INT)` (Primary office workstation Wi-Fi SSID)
+Before executing telemetry collection:
+1. The script queries active system network adapters.
+2. It compares the active connection name/IP subnet against the `allowed_networks` whitelist in the local settings store.
+3. If no whitelisted connection is detected (e.g., user is working remotely or on public Wi-Fi), the execution loop aborts cleanly without reading system state or writing log entries.
 
-If a user is working remotely, the script drops out immediately without reading system state or committing bytes to the database file.
-
----
+> **Note:** Update the `allowed_networks` parameter in your local `settings` database table to reflect your target office network profile names or SSIDs.
 
 ## 🔒 Tailscale Tunnel Security
 
@@ -76,8 +70,7 @@ Follow these steps to deploy and schedule the tracking daemon on a Linux (Ubuntu
 
 ### 1. Project Deployment
 Clone the repository and set up your python environment:
-```bash
-cd ~/Documents/code/github_project/
+
 # Ensure dependencies like psutil and requests are installed
 pip3 install -r battery_tracker/requirements.txt
 ```
@@ -95,8 +88,8 @@ After=network.target tailscaled.service
 
 [Service]
 Type=oneshot
-User=dan
-WorkingDirectory=/home/dan/Documents/code/github_project/battery_tracker
+User=<USER>
+WorkingDirectory=<YOUR DIRECTORY>
 ExecStart=/usr/bin/python3 -c "from tracker.core.battery_log_repository import BatteryLogRepository; from tracker.core.event_detector import EventDetector; from tracker.core.integration import run_once; repo=BatteryLogRepository(); repo.create_table(); detector=EventDetector(); run_once(repo, detector)"
 
 [Install]
@@ -111,11 +104,11 @@ sudo nano /etc/systemd/system/battery-tracker.timer
 Paste the following configuration:
 ```ini
 [Unit]
-Description=Run Battery Tracker every 20 minutes
+Description=Run Battery Tracker every minute
 
 [Timer]
 OnBootSec=5min
-OnUnitActiveSec=20min
+OnUnitActiveSec=1min
 
 [Install]
 WantedBy=timers.target
@@ -147,7 +140,7 @@ Follow these steps to deploy and schedule the tracking daemon on a Windows-based
 2. Download and authenticate the **Tailscale for Windows** client application.
 3. Open a PowerShell terminal and clone or copy the project code to your local machine:
    ```powershell
-   cd C:\Users\YourUsername\Documents
+   cd C:\Users\YourUsername\ProjectRepo
    pip install psutil requests
    ```
 
@@ -155,7 +148,7 @@ Follow these steps to deploy and schedule the tracking daemon on a Windows-based
 Create a simple batch script launcher inside your project directory called `launch_tracker.bat` to handle execution context:
 ```batch
 @echo off
-cd C:\Users\YourUsername\Documents\battery_tracker
+cd C:\Users\YourUsername\ProjectRepo\battery_tracker
 python -c "from tracker.core.battery_log_repository import BatteryLogRepository; from tracker.core.event_detector import EventDetector; from tracker.core.integration import run_once; repo=BatteryLogRepository(); repo.create_table(); detector=EventDetector(); run_once(repo, detector)"
 ```
 
