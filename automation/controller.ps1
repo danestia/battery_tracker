@@ -38,7 +38,7 @@ if ($Mode -eq "Start") {
     $now = Get-Date
     $currentHour = $now.Hour
 
-    # Strict Time Gate: Do not start if it's outside 09:00 - 18:00
+    # Strict Time Gate: Do not start if it's outside 08:00 - 18:00
     if ($currentHour -lt 8 -or $currentHour -ge 18) {
         Write-Log "Start aborted: Outside operational hours (08:00 - 18:00)."
         exit 0
