@@ -1,10 +1,22 @@
+"""
+Core Integration Module
+-----------------------
+Handles the end-to-end telemetry collection cycle: reading hardware states, 
+evaluating network whitelist filters, detecting device events, persisting 
+logs locally, and syncing unsent logs to the remote endpoint.
+"""
+
 from tracker.core.battery_hardware import BatteryHardware
 from tracker.core.event_detector import EventDetector
 from tracker.core.battery_log_repository import BatteryLogRepository
 from tracker.core.sender import Sender
+from typing import Any, Dict
 import uuid
+import logging
 
-def read_hardware(hw):
+logger = logging.getLogger(__name__)
+
+def read_hardware(hw: BatteryHardware) -> Dict[str, Any]:
 
     return {
         "device_id": hw.get_device_id(),
@@ -25,13 +37,17 @@ def read_hardware(hw):
     ]
     return current in office_networks"""
 
-def run_once(repo: BatteryLogRepository, detector: EventDetector, endpoint: str = "http://100.88.115.20:8000/ingest"):
-    print("[DEBUG] running run_once ticket")
+def run_once(
+        repo: BatteryLogRepository, 
+        detector: EventDetector, 
+        endpoint: str = "http://100.88.115.20:8000/ingest"
+    ) -> None:
+    logger.debug("Executing run_once collection cycle")
 
     hw = BatteryHardware()
 
     if not repo.is_network_allowed():
-        print("Network Filter: Not an office whitelist network. Aborting log collection")
+        logger.info("Network Filter: Not an office whitelist network. Aborting log collection")
         return
     
     state = read_hardware(hw)

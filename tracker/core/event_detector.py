@@ -1,20 +1,32 @@
+from typing import Any
+
+
 class EventDetector:
 
-    def __init__(self):
-        self.last_plugged = None
-        self.last_percent = None
+    _PRIORITY: list[str] = [
+        "PLUGGED_IN",
+        "UNPLUGGED",
+        "LOW_BATTERY",
+        "FULLY_CHARGED",
+        "CHARGE_UP",
+        "CHARGE_DOWN",
+    ]
 
-    def detect(self, battery):
-        plugged = battery["plugged"]
-        percent = battery["level"]
+    def __init__(self) -> None:
+        self.last_plugged: bool | None = None
+        self.last_percent: int | None = None
+
+    def detect(self, battery: dict[str, Any]) -> dict[str, str | int] | None:
+        plugged: bool = battery["plugged"]
+        percent: int = battery["level"]
 
         #First call: no previous state
-        if self.last_plugged is None:
+        if self.last_plugged is None or self.last_percent is None:
             self.last_plugged = plugged
             self.last_percent = percent
             return None
         
-        events = []
+        events: list[tuple[str, int]] = []
 
         if not self.last_plugged and plugged:
             events.append(("PLUGGED_IN", percent))
@@ -39,16 +51,8 @@ class EventDetector:
             self.last_plugged = plugged
             self.last_percent = percent
             return None
-
-        PRIORITY = [
-            "PLUGGED_IN",
-            "UNPLUGGED",
-            "LOW_BATTERY",
-            "FULLY_CHARGED",
-            "CHARGE_UP",
-            "CHARGE_DOWN",
-        ]
-        events.sort(key=lambda e: PRIORITY.index(e[0]))
+        
+        events.sort(key=lambda e: self._PRIORITY.index(e[0]))
         chosen_type, chosen_level = events[0]
 
         self.last_plugged = plugged

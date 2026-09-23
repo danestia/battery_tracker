@@ -1,13 +1,24 @@
+"""
+Sender Module
+-------------
+Manages HTTP synchronization of local battery log entries to a remote 
+ingestion endpoint, handling connectivity checks, payload transformation, 
+and local queue flushing upon successful transmission.
+"""
+
+import logging
+from typing import Any, Dict, List
 import requests
 from tracker.core.battery_log_repository import BatteryLogRepository
 
-DB_PATH = "data/battery_logs.sqlite"
+logger = logging.getLogger(__name__)
+
 
 class Sender:
-    def __init__(self, repo, endpoint, timeout=5):
-        self.timeout = timeout
-        self.repo = repo
-        self.endpoint = endpoint
+    def __init__(self, repo: BatteryLogRepository, endpoint: str, timeout: int = 5):
+        self.timeout: int = timeout
+        self.repo: BatteryLogRepository = repo
+        self.endpoint: str = endpoint
 
     def _is_hub_reachable(self) -> bool:
         try:
@@ -16,18 +27,18 @@ class Sender:
         except requests.RequestException:
             return False
 
-    def send_unsent(self):
+    def send_unsent(self) -> int:
         if not self._is_hub_reachable():
-            print("Network Filter: Hub is unreachable. Keeping local logs.")
+            logger.info("Network Filter: Hub is unreachable. Keeping local logs.")
             return 0
 
         unsent = self.repo.get_unsent_logs()
         send_count = 0
-        successfully_sent_uuids = []
+        successfully_sent_uuids: List[str] = []
 
         for row in unsent:
 
-            payload = dict(row)
+            payload: Dict[str, Any] = dict(row)
 
             if "uuid" in payload:
                 payload["log_uuid"] = payload["uuid"]
@@ -42,9 +53,15 @@ class Sender:
                     successfully_sent_uuids.append(row["uuid"])
                     send_count += 1
                 else:
+                    logger.warning(
+                        "Failed to sync log UUID %s. Status code: %s",
+                        payload["uuid"],
+                        response.status_code
+                    )
                     continue
 
-            except requests.RequestException:
+            except requests.RequestException as e:
+                logger.warning("Request exception encountered during sync: %s", e)
                 break
 
         if successfully_sent_uuids:
@@ -53,8 +70,8 @@ class Sender:
                     self.repo.mark_sent(u)
                 
                 self.repo.delete_safely_sent_logs(successfully_sent_uuids)
-                print(f"Successfully flushed {len(successfully_sent_uuids)} rows from SQLite Temp storage.")
+                logger.info(f"Successfully flushed {len(successfully_sent_uuids)} rows from SQLite Temp storage.")
             except Exception as e:
-                print(f"Failed to execute storage flush: {e}")
+                logger.error(f"Failed to execute storage flush: {e}")
 
         return send_count

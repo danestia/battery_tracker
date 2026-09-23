@@ -10,18 +10,18 @@ from tracker.core.event_detector import EventDetector
 from tracker.core.sender import Sender
 from tracker.core.integration import run_once
 
+_SHUTDOWN_REQUESTED = False
+
 def get_default_db_path() -> Path:
     base = Path(__file__).resolve().parent / "data"
    
     base.mkdir(parents=True, exist_ok=True)
     return base / "battery_logs.sqlite"
 
-shutdown_requested = False
-
 def handle_shutdown(signum, frame):
-    global shutdown_requested
+    global _SHUTDOWN_REQUESTED
     print("[SHUTDOWN] Signal received, finishing current cycle...")
-    shutdown_requested = True
+    _SHUTDOWN_REQUESTED = True
 
 def register_signals():
     signal.signal(signal.SIGTERM, handle_shutdown)
@@ -63,7 +63,7 @@ def main():
 
     print("[STATUS] Battery tracker daemon started")
 
-    while not shutdown_requested:
+    while not _SHUTDOWN_REQUESTED:
         raw_settings = repo.load_settings() or {}
         settings = {
             "manual_override": raw_settings.get("manual_override", 0),
@@ -82,7 +82,7 @@ def main():
 
         elapsed = 0
         interval = settings["interval"]
-        while not shutdown_requested and elapsed < interval:
+        while not _SHUTDOWN_REQUESTED and elapsed < interval:
             time.sleep(1)
             elapsed += 1
 

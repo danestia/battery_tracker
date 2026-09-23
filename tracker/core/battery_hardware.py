@@ -2,8 +2,9 @@ import hashlib
 import platform
 import subprocess
 import uuid
-from datetime import datetime
 import psutil
+
+from datetime import datetime
 
 try:
     import ctypes
@@ -24,19 +25,19 @@ except ImportError:
 
 class BatteryHardware:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.os = platform.system()
 
-    def get_device_id(self):
+    def get_device_id(self) -> str:
         mac_int = uuid.getnode()
         mac_str = ':'.join(f"{(mac_int >> ele) & 0xff:02x}" for ele in range(40, -1, -8))
         return hashlib.sha256(mac_str.encode()).hexdigest()
     
-    def get_timestamp(self):
+    def get_timestamp(self) -> str:
         now = datetime.now()
         return now.strftime("%Y-%m-%d %H:%M:%S")
     
-    def get_battery_level(self):
+    def get_battery_level(self) -> int | None:
         if self.os == "Windows":
             return self._win_battery_percent()
         elif self.os == "Linux":
@@ -45,7 +46,7 @@ class BatteryHardware:
             return self._mac_battery_percent()
         return None
     
-    def is_plugged(self):
+    def is_plugged(self) -> bool | None:
         if self.os == "Windows":
             return self._win_is_plugged()
         elif self.os == "Linux":
@@ -54,7 +55,7 @@ class BatteryHardware:
             return self._mac_is_plugged()
         return None
 
-    def get_localisation(self):
+    def get_localisation(self) -> str:
         if self.os == "Windows":
             return self._win_localisation()
         elif self.os == "Linux":
@@ -66,26 +67,26 @@ class BatteryHardware:
     # ==========================================
     # WINDOWS METRICS & LOCALISATION
     # ==========================================
-    def _win_get_status(self):
+    def _win_get_status(self) -> _SYSTEM_POWER_STATUS | None:
         if not ctypes or _SYSTEM_POWER_STATUS is None:
             return None
         status = _SYSTEM_POWER_STATUS()
         result = ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(status))
         return status if result else None
     
-    def _win_battery_percent(self):
+    def _win_battery_percent(self) -> int | None:
         status = self._win_get_status()
         if status:
             return status.BatteryLifePercent
         return None
     
-    def _win_is_plugged(self):
+    def _win_is_plugged(self) -> bool | None:
         status = self._win_get_status()
         if status:
             return status.ACLineStatus == 1
         return None
     
-    def _win_localisation(self):
+    def _win_localisation(self) -> str:
         # 1. Try Wi-Fi interface first
         try:
             wifi = subprocess.run(
@@ -123,15 +124,15 @@ class BatteryHardware:
     # ==========================================
     # LINUX METRICS & LOCALISATION
     # ==========================================
-    def _linux_battery_percent(self):
+    def _linux_battery_percent(self) -> int | None:
         battery = psutil.sensors_battery()
         return battery.percent if battery else None
     
-    def _linux_is_plugged(self):
+    def _linux_is_plugged(self) -> bool | None:
         battery = psutil.sensors_battery()
         return bool(battery.power_plugged) if battery else None
     
-    def _linux_localisation(self):
+    def _linux_localisation(self) -> str:
         try:
             wifi = subprocess.run(
                 ["iwgetid", "-r"],
@@ -161,7 +162,7 @@ class BatteryHardware:
     # ==========================================
     # MAC OS METRICS & LOCALISATION
     # ==========================================
-    def _mac_battery_percent(self):
+    def _mac_battery_percent(self) -> int | None:
         try:
             out = subprocess.run(
                 ["pmset", "-g", "batt"],
@@ -174,7 +175,7 @@ class BatteryHardware:
         except:
             return None
         
-    def _mac_is_plugged(self):
+    def _mac_is_plugged(self) -> bool | None:
         try:
             out = subprocess.run(
                 ["pmset", "-g", "batt"],
@@ -186,7 +187,7 @@ class BatteryHardware:
         except:
             return None
         
-    def _mac_localisation(self):
+    def _mac_localisation(self) -> str:
         try:
             wifi = subprocess.run(
                 ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],

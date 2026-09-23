@@ -2,22 +2,24 @@ import sqlite3
 import time
 import os
 import subprocess
+from pathlib import Path
 
 class BatteryLogRepository:
-    def __init__(self, db_path=None):
-        if db_path is None:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            self.db_path = os.path.join(base_dir, "data", "battery_logs.sqlite")
-        else:
-            self.db_path = os.path.abspath(db_path)
 
-    def _connect(self):
+    def __init__(self, db_path: str | Path | None = None) -> None:
+        if db_path is None:
+            base_dir = Path(__file__).resolve().parent.parent.parent
+            self.db_path = base_dir / "data" / "battery_logs.sqlite"
+        else:
+            self.db_path = Path(db_path).resolve()
+
+    def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=5)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL;")
         return conn
     
-    def _execute_with_retry(self, query, params=(), retries=5,delay=0.2):
+    def _execute_with_retry(self, query: str, params: tuple = (), retries: int = 5, delay: float = 0.2) -> None:
         for _ in range(retries):
             try:
                 conn = self._connect()
@@ -33,7 +35,7 @@ class BatteryLogRepository:
                 raise
         raise RuntimeError("DB locked too long")
     
-    def create_table(self):
+    def create_table(self) -> None:
         conn = self._connect()
         cursor = conn.cursor()
 
@@ -69,7 +71,7 @@ class BatteryLogRepository:
         conn.commit()
         conn.close()
 
-    def insert_log(self, log):
+    def insert_log(self, log: dict) -> None:
         self._execute_with_retry("""
             INSERT INTO battery_logs (
                 uuid, device_id, timestamp, plugged, level,
@@ -87,7 +89,7 @@ class BatteryLogRepository:
             log["event_chargelevel"],
         ))
 
-    def get_unsent_logs(self):
+    def get_unsent_logs(self) -> list[sqlite3.Row]:
         conn = self._connect()
         cursor = conn.cursor()
 
@@ -103,7 +105,7 @@ class BatteryLogRepository:
 
         return rows
     
-    def mark_sent(self, log_uuid):
+    def mark_sent(self, log_uuid: str) -> None:
         
         self._execute_with_retry("""
             UPDATE battery_logs
@@ -111,7 +113,7 @@ class BatteryLogRepository:
             WHERE uuid = ?
         """, (log_uuid,))
 
-    def delete_old(self, before):
+    def delete_old(self, before: str) -> int:
         conn = self._connect()
         cursor = conn.cursor()
 
@@ -127,7 +129,7 @@ class BatteryLogRepository:
 
         return deleted
     
-    def load_settings(self):
+    def load_settings(self) -> dict:
         conn = self._connect()
         cursor = conn.cursor()
 
@@ -138,7 +140,7 @@ class BatteryLogRepository:
         return dict(row)
 
 
-    def update_settings(self, interval=None, manual_override=None, allowed_networks=None):
+    def update_settings(self, interval: int | None = None, manual_override: int | None = None, allowed_networks: str | None = None) -> None:
         if interval is not None:
             self._execute_with_retry("UPDATE settings SET interval = ? WHERE id = 1", (interval,))
         if manual_override is not None:
@@ -146,7 +148,7 @@ class BatteryLogRepository:
         if allowed_networks is not None:
             self._execute_with_retry("UPDATE settings SET allowed_networks = ? WHERE id = 1", (allowed_networks,))
 
-    def delete_safely_sent_logs(self, record_uuids: list):
+    def delete_safely_sent_logs(self, record_uuids: list[str]) -> None:
 
         if not record_uuids:
             return
